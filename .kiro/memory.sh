@@ -164,11 +164,11 @@ cmd_add() {
     local tags_json="[]"
 
     if [ -n "$files" ]; then
-        files_json=$(echo "$files" | jq -R 'split(",") | map(trim)')
+        files_json=$(echo "$files" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
     fi
 
     if [ -n "$tags" ]; then
-        tags_json=$(echo "$tags" | jq -R 'split(",") | map(trim)')
+        tags_json=$(echo "$tags" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
     fi
 
     # Create new insight
