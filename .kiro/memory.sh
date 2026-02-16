@@ -33,7 +33,10 @@ init_memory() {
 EOF
         echo -e "${GREEN}Memory initialized at $MEMORY_FILE${NC}"
     else
-        echo -e "${YELLOW}Memory already exists at $MEMORY_FILE${NC}"
+        echo -e "${YELLOW}Memory file already exists at $MEMORY_FILE${NC}"
+        echo -e "  Use '${GREEN}.kiro/memory.sh status${NC}' to see current memory"
+        echo -e "  Use '${GREEN}.kiro/memory.sh add${NC}' to add new insights"
+        echo -e "  Use '${GREEN}.kiro/memory.sh show${NC}' to display all insights"
     fi
 }
 
