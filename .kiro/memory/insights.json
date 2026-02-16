@@ -1,0 +1,490 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2026-02-13T15:23:30Z",
+    "total_insights": 35
+  },
+  "insights": {
+    "conventions": [
+      {
+        "id": "snake-case-naming",
+        "summary": "Python code uses snake_case naming",
+        "content": "All variables, functions, and modules use snake_case. Classes use PascalCase. Constants use UPPER_CASE.",
+        "tags": [
+          "python",
+          "naming"
+        ],
+        "files": [],
+        "created_at": "2026-02-06T00:00:00Z"
+      },
+      {
+        "id": "error-handling-pattern",
+        "summary": "Always use explicit error handling with context",
+        "content": "Team convention is to catch specific exceptions and add contextual information before re-raising. Avoid bare except clauses. Log errors with structured data including request IDs.",
+        "tags": [
+          "python",
+          "errors",
+          "logging"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "json-config-files",
+        "summary": "Configuration stored as JSON not YAML",
+        "content": "Project uses JSON for all config files to avoid YAML parsing ambiguities. Config validation happens at startup with clear error messages.",
+        "tags": [
+          "config",
+          "json",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "docstring-format",
+        "summary": "Use Google-style docstrings for all functions",
+        "content": "Team standard is Google-style docstrings with Args, Returns, Raises sections. Include type hints in function signatures, not docstrings. Examples required for public API functions.",
+        "tags": [
+          "python",
+          "documentation",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "import-ordering",
+        "summary": "Imports ordered: stdlib, third-party, local",
+        "content": "Import blocks separated by blank lines in order: standard library, third-party packages, local modules. Within each block, alphabetically sorted. Use isort for automatic formatting.",
+        "tags": [
+          "python",
+          "imports",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "max-line-length",
+        "summary": "Line length limit is 100 characters",
+        "content": "Project uses 100 character line limit instead of PEP 8's 79. Configured in .editorconfig and enforced by black formatter. Comments and docstrings follow same limit.",
+        "tags": [
+          "python",
+          "formatting",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "kiro-multiline-input",
+        "summary": "Use /editor or Ctrl+J for multi-line prompts",
+        "content": "In Kiro CLI chat, use /editor command or Ctrl+J to enter multi-line statements. /editor opens default editor (vi). /reply opens editor with previous assistant message quoted.",
+        "tags": [
+          "kiro-cli",
+          "chat",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-conversation-persistence",
+        "summary": "Conversations auto-persist per directory",
+        "content": "Kiro CLI automatically saves conversations based on working directory. Use --resume to continue previous conversation in current directory, or --resume-picker for interactive selection.",
+        "tags": [
+          "kiro-cli",
+          "chat",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      }
+    ],
+    "architecture": [
+      {
+        "id": "memory-system",
+        "summary": "Code-free RAG memory system using ripgrep",
+        "content": "Project uses a grep-based memory system stored in .kiro/memory/insights.json. Agents use rg to search for relevant insights instead of reading the entire file, minimizing context usage.",
+        "files": [
+          ".kiro/memory.sh",
+          ".kiro/memory/insights.json"
+        ],
+        "tags": [
+          "memory",
+          "rag",
+          "architecture"
+        ],
+        "created_at": "2026-02-06T00:00:00Z"
+      },
+      {
+        "id": "event-driven-core",
+        "summary": "System uses event-driven architecture with message bus",
+        "content": "Core components communicate via async message bus. Events are immutable and include correlation IDs for tracing. Enables loose coupling and independent scaling of services.",
+        "tags": [
+          "architecture",
+          "events",
+          "async"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "plugin-system",
+        "summary": "Extensible plugin system with dynamic loading",
+        "content": "Plugins discovered via entry points and loaded at runtime. Each plugin has isolated namespace and can register handlers, commands, and hooks without modifying core code.",
+        "tags": [
+          "plugins",
+          "extensibility",
+          "architecture"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "cache-layer-design",
+        "summary": "Two-tier caching with memory and disk layers",
+        "content": "Caching architecture uses in-memory LRU cache as L1 and disk-based cache as L2. Hot data stays in memory, warm data on disk. Cache keys include version hash to auto-invalidate on code changes.",
+        "tags": [
+          "caching",
+          "performance",
+          "architecture"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "kiro-mcp-architecture",
+        "summary": "MCP extends Kiro with external tools and context",
+        "content": "Model Context Protocol allows Kiro to connect to specialized servers providing additional tools. MCP servers configured in .kiro/settings/mcp.json (workspace) or ~/.kiro/settings/mcp.json (user). Each server defined with command, args, and env vars.",
+        "tags": [
+          "kiro-cli",
+          "mcp",
+          "architecture",
+          "extensibility"
+        ],
+        "files": [
+          ".kiro/settings/mcp.json"
+        ],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-custom-agents",
+        "summary": "Custom agents define tool access and permissions",
+        "content": "Custom agents in Kiro CLI specify which tools are available, pre-approved permissions, and context to include. Reduces permission prompts and tailors behavior for specific workflows. Agents can use built-in tools and MCP servers.",
+        "tags": [
+          "kiro-cli",
+          "agents",
+          "architecture",
+          "configuration"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-hooks-system",
+        "summary": "Hooks execute custom commands at agent lifecycle points",
+        "content": "Kiro hooks run at specific events: AgentSpawn, UserPromptSubmit, PreToolUse, PostToolUse, Stop. Hooks receive JSON via STDIN with event context. Exit code 0 = success, 2 = block tool (PreToolUse only). Enables validation, logging, and custom behaviors.",
+        "tags": [
+          "kiro-cli",
+          "hooks",
+          "architecture",
+          "automation"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      }
+    ],
+    "patterns": [
+      {
+        "id": "targeted-retrieval",
+        "summary": "Use targeted retrieval instead of full file reads",
+        "content": "When accessing memory, extract 2-4 key search terms and use rg to find only relevant sections. This preserves context window for actual work.",
+        "files": [],
+        "tags": [
+          "memory",
+          "optimization",
+          "pattern"
+        ],
+        "created_at": "2026-02-06T00:00:00Z"
+      },
+      {
+        "id": "context-manager-cleanup",
+        "summary": "Use context managers for resource cleanup",
+        "content": "All file handles, network connections, and locks use context managers. Custom resources implement __enter__ and __exit__. Ensures cleanup even during exceptions.",
+        "tags": [
+          "python",
+          "pattern",
+          "resources"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "lazy-initialization",
+        "summary": "Expensive resources initialized lazily on first use",
+        "content": "Database connections, API clients, and large data structures use lazy initialization pattern. Reduces startup time and memory footprint when features aren't used.",
+        "tags": [
+          "performance",
+          "pattern",
+          "optimization"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "builder-pattern-config",
+        "summary": "Builder pattern for complex configuration objects",
+        "content": "Complex configs use builder pattern with fluent interface. Enables step-by-step construction with validation at each step. Final build() method validates complete configuration.",
+        "tags": [
+          "pattern",
+          "config",
+          "design"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "kiro-hook-matchers",
+        "summary": "Hook matchers use tool names or aliases",
+        "content": "Kiro hooks use matcher field to specify tools: canonical names (fs_write, execute_bash) or aliases (write, shell). MCP tools use @server/tool format. Special matchers: * (all tools), @builtin (built-in only), @server (all from MCP server).",
+        "tags": [
+          "kiro-cli",
+          "hooks",
+          "pattern",
+          "configuration"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "grep-over-ml",
+        "summary": "Chose grep-based search over ML embeddings",
+        "content": "Decision to use ripgrep for memory retrieval instead of vector embeddings. Rationale: simpler, faster, no dependencies, sufficient for keyword-based retrieval, and preserves context window.",
+        "files": [],
+        "tags": [
+          "memory",
+          "decision",
+          "simplicity"
+        ],
+        "created_at": "2026-02-06T00:00:00Z"
+      },
+      {
+        "id": "sqlite-over-postgres",
+        "summary": "Using SQLite for local storage instead of PostgreSQL",
+        "content": "Chose SQLite for simplicity and zero-config deployment. Project doesn't need concurrent writes or network access. Can migrate to Postgres later if scaling requires it.",
+        "tags": [
+          "database",
+          "decision",
+          "sqlite"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "no-orm-decision",
+        "summary": "Raw SQL queries instead of ORM",
+        "content": "Team decided against using an ORM to maintain query visibility and performance control. SQL queries are in dedicated query modules with clear documentation.",
+        "tags": [
+          "database",
+          "decision",
+          "sql"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "monorepo-structure",
+        "summary": "Monorepo chosen over multiple repositories",
+        "content": "All services in single monorepo for easier refactoring and atomic changes across services. Shared code in common packages. CI/CD detects changed services and deploys only those.",
+        "tags": [
+          "decision",
+          "repository",
+          "structure"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "kiro-mcp-vs-builtin",
+        "summary": "MCP chosen for extensibility over hardcoded tools",
+        "content": "Kiro uses Model Context Protocol to allow external tool integration instead of hardcoding all tools. Enables users to add custom tools without modifying Kiro core. Balances built-in tools for common tasks with MCP for specialized needs.",
+        "tags": [
+          "kiro-cli",
+          "mcp",
+          "decision",
+          "extensibility"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      }
+    ],
+    "gotchas": [
+      {
+        "id": "dont-read-full-memory",
+        "summary": "Never read entire insights.json file",
+        "content": "Reading the full memory file wastes context space. Always use rg with specific search terms to retrieve only relevant insights. This is critical for maintaining efficient context usage.",
+        "files": [
+          ".kiro/memory/insights.json"
+        ],
+        "tags": [
+          "memory",
+          "gotcha",
+          "performance"
+        ],
+        "created_at": "2026-02-06T00:00:00Z"
+      },
+      {
+        "id": "memory-test-verified",
+        "summary": "Memory system tested and verified working",
+        "content": "System successfully tested on 2026-02-13. Ripgrep retrieval works correctly, can add new insights, and metadata updates properly. All core functionality confirmed operational.",
+        "files": [
+          ".kiro/memory/insights.json"
+        ],
+        "tags": [
+          "memory",
+          "testing",
+          "verification"
+        ],
+        "created_at": "2026-02-13T04:33:23Z"
+      },
+      {
+        "id": "async-context-leak",
+        "summary": "Async context variables don't propagate to thread pools",
+        "content": "When using asyncio with thread pool executors, context variables are not automatically copied. Must explicitly pass context or use contextvars.copy_context() before thread execution.",
+        "tags": [
+          "python",
+          "async",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "json-datetime-serialization",
+        "summary": "datetime objects need custom JSON serialization",
+        "content": "Standard json.dumps fails on datetime objects. Project uses custom JSONEncoder that converts datetime to ISO format strings. Import from utils.json_helpers module.",
+        "tags": [
+          "python",
+          "json",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T04:35:40Z"
+      },
+      {
+        "id": "mutable-default-args",
+        "summary": "Never use mutable default arguments",
+        "content": "Python's mutable default arguments are shared across calls. Always use None as default and initialize inside function. Linter configured to catch this pattern.",
+        "tags": [
+          "python",
+          "gotcha",
+          "bugs"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "redis-connection-pool",
+        "summary": "Redis connections must use connection pool",
+        "content": "Creating new Redis connection per request exhausts file descriptors. Always use connection pool initialized at startup. Pool size configured based on worker count.",
+        "tags": [
+          "redis",
+          "gotcha",
+          "performance"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "timezone-aware-datetime",
+        "summary": "Always use timezone-aware datetime objects",
+        "content": "Naive datetime objects cause subtle bugs across timezones. All datetime objects must include timezone info. Use UTC internally, convert to local only for display.",
+        "tags": [
+          "python",
+          "datetime",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "sql-injection-prevention",
+        "summary": "Use parameterized queries, never string formatting",
+        "content": "Never use f-strings or % formatting for SQL queries. Always use parameterized queries with placeholders. Linter flags string formatting in SQL query files.",
+        "tags": [
+          "security",
+          "sql",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "circular-import-prevention",
+        "summary": "Avoid circular imports with late imports",
+        "content": "Circular imports cause import errors. Move imports inside functions if needed, or restructure to remove circular dependency. Type hints can use string literals to avoid imports.",
+        "tags": [
+          "python",
+          "imports",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T12:38:14Z"
+      },
+      {
+        "id": "kiro-chat-save-load",
+        "summary": "/chat save and /chat load are directory-independent",
+        "content": "Kiro's /chat save and /chat load commands work independently of directory-based persistence. Loading a conversation replaces current one regardless of where it was saved. Use -f flag to force overwrite when saving.",
+        "tags": [
+          "kiro-cli",
+          "chat",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-hook-exit-codes",
+        "summary": "Hook exit codes have specific meanings",
+        "content": "Kiro hook exit codes: 0 = success (STDOUT captured), 2 = block tool execution (PreToolUse only, STDERR to LLM), other = warning (STDERR shown to user). PreToolUse is only hook that can block tool execution.",
+        "tags": [
+          "kiro-cli",
+          "hooks",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-hook-caching",
+        "summary": "Hook caching controlled by cache_ttl_seconds",
+        "content": "Kiro hooks cache successful results based on cache_ttl_seconds: 0 = no caching (default), >0 = cache for specified seconds. AgentSpawn hooks are never cached. Default timeout is 30 seconds.",
+        "tags": [
+          "kiro-cli",
+          "hooks",
+          "gotcha",
+          "performance"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "kiro-mcp-include-flag",
+        "summary": "includeMcpJson controls workspace MCP inheritance",
+        "content": "In custom agents, includeMcpJson field determines if agent inherits MCP servers from workspace/user mcp.json files. When true, agent gets both agent-defined and workspace MCP servers. When false, only agent-defined servers available.",
+        "tags": [
+          "kiro-cli",
+          "mcp",
+          "agents",
+          "gotcha"
+        ],
+        "files": [],
+        "created_at": "2026-02-13T15:23:30Z"
+      }
+    ]
+  }
+}

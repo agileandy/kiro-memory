@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor files
+*.swp
+*~
+.project
+.vscode/
+
+# Optional: Keep local memory separate
+# .kiro/memory/insights.json
