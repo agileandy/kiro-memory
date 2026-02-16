@@ -106,8 +106,36 @@ echo ".kiro/memory/insights.json" >> .gitignore
 
 ## Requirements
 
-- `rg` (ripgrep) - for fast search
-- `jq` - for JSON manipulation
+Before using the Kiro Memory System, ensure you have:
+
+### Prerequisites
+
+- **jq 1.6+** - for JSON manipulation
+- **rg (ripgrep)** - for fast search
+
+### Check Versions
+
+```bash
+jq --version   # should be 1.6 or higher
+rg --version   # ripgrep should be installed
+```
+
+### Installation
+
+**macOS (Homebrew):**
+```bash
+brew install jq ripgrep
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install jq ripgrep
+# Note: Ubuntu 18.04 ships with jq 1.5. You may need jq 1.6+ from backports or manual install.
+```
+
+**From source (if needed):**
+- jq: https://stedolan.github.io/jq/download/
+- ripgrep: https://github.com/BurntSushi/ripgrep#installation
 
 ## License
 
