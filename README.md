@@ -76,6 +76,16 @@ Each insight in `.kiro/memory/insights.json`:
 }
 ```
 
+### Understanding "Related Files"
+
+When you add a "related file" reference to an insight, the memory system stores that reference but **does not modify the original file**. The reference helps you:
+
+- Find which files are related to which insights
+- Navigate from an insight to relevant source files
+- Track connections between code and decisions
+
+**Example**: If you add an insight about "snake_case naming" and reference `AGENTS.md`, the memory stores that connection for future reference but doesn't change `AGENTS.md` itself.
+
 ## Agent Integration
 
 Agents configured with the memory-capture hook will automatically:
