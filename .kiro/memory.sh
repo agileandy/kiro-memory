@@ -224,6 +224,105 @@ EOF
     fi
 }
 
+# Test if a memory is retrievable
+cmd_test() {
+    local memory_id="$1"
+    shift
+
+    if [[ -z "$memory_id" ]]; then
+        echo -e "${RED}Usage: .kiro/memory.sh test <memory-id> <search-term1> <search-term2> ...${NC}"
+        echo ""
+        echo "Tests if a memory would be found with different search terms."
+        echo ""
+        echo "Example:"
+        echo "  .kiro/memory.sh test snake-case-naming python function naming"
+        return 1
+    fi
+
+    if [[ ! -f "$MEMORY_FILE" ]]; then
+        echo -e "${RED}Memory not found. Run 'kiro memory init' first.${NC}"
+        return 1
+    fi
+
+    if [[ $# -eq 0 ]]; then
+        echo -e "${YELLOW}Warning: No search terms provided. Testing with common terms...${NC}"
+        # Extract tags from the memory to use as search terms
+        local tags=$(jq -r --arg id "$memory_id" '.insights[][] | select(.id == $id) | .tags[]' "$MEMORY_FILE" 2>/dev/null)
+        if [[ -z "$tags" ]]; then
+            echo -e "${RED}Memory '$memory_id' not found or has no tags.${NC}"
+            return 1
+        fi
+        SEARCH_TERMS=($(echo "$tags"))
+    else
+        SEARCH_TERMS=("$@")
+    fi
+
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}📝 Testing Memory: $memory_id${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    # Extract the memory
+    local memory_json=$(jq -r --arg id "$memory_id" '.insights[][] | select(.id == $id)' "$MEMORY_FILE" 2>/dev/null)
+
+    if [[ -z "$memory_json" ]]; then
+        echo -e "${RED}Memory with ID '$memory_id' not found.${NC}"
+        echo ""
+        echo "Available memory IDs:"
+        jq -r '.insights[][] | .id' "$MEMORY_FILE" | sort -u
+        return 1
+    fi
+
+    # Display memory details
+    echo -e "${GREEN}Memory Content:${NC}"
+    echo "$memory_json" | jq -r '"  Summary: \(.summary)\n  Content: \(.content)\n  Tags: \(.tags | join(", "))"'
+    echo ""
+
+    # Test each search term
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}🔍 Search Term Tests${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    local found_count=0
+    local total_count=${#SEARCH_TERMS[@]}
+
+    for term in "${SEARCH_TERMS[@]}"; do
+        local match=$(rg -i -C 20 "$term" "$MEMORY_FILE" 2>/dev/null | grep -q "\"id\": \"$memory_id\"" && echo "yes" || echo "no")
+
+        if [[ "$match" == "yes" ]]; then
+            echo -e "  ${GREEN}✅ '$term' → FOUND${NC}"
+            ((found_count++))
+        else
+            echo -e "  ${RED}❌ '$term' → NOT FOUND${NC}"
+        fi
+    done
+
+    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}📊 Results: $found_count/$total_count search terms would find this memory${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    if [[ $found_count -eq $total_count ]]; then
+        echo ""
+        echo -e "${GREEN}✅ Great! All search terms work.${NC}"
+        return 0
+    elif [[ $found_count -gt $((total_count / 2)) ]]; then
+        echo ""
+        echo -e "${YELLOW}⚠️  Some search terms missing. Consider adding them to content or tags.${NC}"
+        return 0
+    else
+        echo ""
+        echo -e "${RED}❌ Most search terms fail! This memory won't be found easily.${NC}"
+        echo ""
+        echo "Suggested fixes:"
+        echo "  1. Add missing terms to the content field"
+        echo "  2. Add missing terms to the tags array"
+        echo "  3. Rewrite summary to include primary keywords"
+        return 1
+    fi
+}
+
 # Show help
 cmd_help() {
     echo "kiro memory - Project memory management"
@@ -236,6 +335,7 @@ cmd_help() {
     echo "  show      Display all insights"
     echo "  search    Search by keyword or tag"
     echo "  add       Manually add a new insight"
+    echo "  test      Test if a memory is retrievable with search terms"
     echo "  clear     Clear all memory (requires confirmation)"
     echo "  help      Show this help message"
 }
@@ -247,6 +347,7 @@ case "${1:-help}" in
     show)   cmd_show ;;
     search) cmd_search "$2" ;;
     add)    cmd_add ;;
+    test)   shift; cmd_test "$@" ;;
     clear)  cmd_clear ;;
     help|--help|-h) cmd_help ;;
     *)      echo -e "${RED}Unknown command: $1${NC}"; echo ""; cmd_help ;;

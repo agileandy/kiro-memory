@@ -366,8 +366,139 @@ When you add a "related file" reference, the memory system stores that reference
 ./.kiro/memory.sh show      # Display all insights
 ./.kiro/memory.sh search    # Search by keyword or tag
 ./.kiro/memory.sh add       # Manually add a new insight
+./.kiro/memory.sh test      # Test if a memory is retrievable
 ./.kiro/memory.sh clear     # Clear all memory (requires confirmation)
 ```
+
+---
+
+## Testing Memory Retrieval
+
+The `test` command helps verify that a memory will be found when searched.
+
+### Basic Usage
+
+```bash
+./.kiro/memory.sh test <memory-id> <search-term1> <search-term2> ...
+```
+
+### Example
+
+```bash
+# Test if an AWS profile memory would be found with various search terms
+./.kiro/memory.sh test aws-profile-convention aws logs cloudwatch profile
+```
+
+Output:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 Testing Memory: aws-profile-convention
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Memory Content:
+  Summary: AWS CLI requires profile specification
+  Content: AWS CLI commands require explicit profile specification for ALL services...
+  Tags: aws, profile, cloudwatch, logs, s3, ec2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 Search Term Tests
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ 'aws' → FOUND
+  ❌ 'logs' → NOT FOUND
+  ✅ 'cloudwatch' → FOUND
+  ✅ 'profile' → FOUND
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Results: 3/4 search terms would find this memory
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  Some search terms missing. Consider adding them to content or tags.
+```
+
+---
+
+## Best Practices: Writing Searchable Memories
+
+Since Kiro Memory uses **grep-based search** (not semantic/AI search), the words you use directly impact retrievability.
+
+### The Golden Rule
+
+**Include all likely search terms in the memory's content and tags.**
+
+### What Happens When Keywords Are Missing
+
+```
+Memory stored: "Use AWS profile X for prod"
+User asks:     "Search logs in AWS for errors"
+Agent searches: "logs", "aws", "errors"
+Result:        NOT FOUND (no "logs" or "errors" in memory)
+```
+
+### How to Write Searchable Memories
+
+#### 1. Include Primary Keywords
+What's the main topic?
+- ❌ "Profile setting for production"
+- ✅ "AWS CLI commands require explicit profile specification"
+
+#### 2. Include Related Tools/Services
+What related tools might people search for?
+- ❌ "Use profile X for prod"
+- ✅ "AWS CLI commands (logs, cloudwatch, s3, ec2, lambda) require profile specification"
+
+#### 3. Include Action Verbs
+What actions might people search for?
+- ❌ "Database connection settings"
+- ✅ "When querying, connecting, or accessing PostgreSQL database, use connection pool"
+
+#### 4. Include Synonyms and Variants
+What different terms might people use?
+- ❌ "Use prod profile"
+- ✅ "Use profile X for production/prod, profile Y for non-prod/dev/staging"
+
+#### 5. Use Generous Tags
+Tags catch searches that content might miss:
+```json
+{
+  "tags": ["aws", "cloudwatch", "logs", "s3", "ec2", "lambda", "profile", "cli", "prod", "production", "dev", "staging"]
+}
+```
+
+### Example: Before and After
+
+#### ❌ BAD: Too Specific
+```json
+{
+  "id": "aws-profile",
+  "summary": "Use AWS profile X for prod",
+  "content": "Always specify --profile flag for AWS CLI.",
+  "tags": ["aws", "profile"]
+}
+```
+Fails searches for: "cloudwatch", "logs", "s3", "production"
+
+#### ✅ GOOD: Keyword-Rich
+```json
+{
+  "id": "aws-cli-profiles",
+  "summary": "AWS CLI commands require explicit profile specification",
+  "content": "ALL AWS CLI commands (logs, cloudwatch, s3, ec2, lambda, rds) must use --profile flag. Use profile X for production/prod environments, profile Y for non-prod/dev/staging environments. This applies to queries, deployments, and any AWS service access.",
+  "tags": ["aws", "cli", "profile", "cloudwatch", "logs", "s3", "ec2", "lambda", "rds", "prod", "production", "dev", "staging"]
+}
+```
+Passes searches for: "aws", "logs", "cloudwatch", "s3", "deploy", "production", "profile"
+
+### Testing Before Committing
+
+Always test a new memory with likely search terms:
+
+```bash
+# Add memory, then test it
+./.kiro/memory.sh test aws-cli-profiles aws logs deploy production
+```
+
+If search terms fail, go back and add them to the content or tags.
 
 ---
 
