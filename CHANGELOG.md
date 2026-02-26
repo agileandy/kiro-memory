@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Probability Threshold System**: Memory creation now uses probability-based threshold (default: 20%)
+  - Add `KIRO_MEMORY_THRESHOLD` environment variable to control sensitivity
+  - Structured probability checklist with 6 categories (0-100% scores)
+  - `future_usefulness` field added to all insights for filtering and pruning
+  - Documentation: `docs/probability-threshold.md`
+  
+- **Enhanced Stop Hook**: More assertive memory capture prompts
+  - Shows probability checklist at end of each turn
+  - Displays current threshold setting
+  - Requires explicit acknowledgment (created N memories or none)
+  - Includes keyword quality reminder
+  
+- **Verbose Memory Check**: Transparency into memory decisions
+  - Shows `💭 Memory check: [reason]` at end of every response (when verbose=true)
+  - Includes probability scores when memories are created
+  - Helps users understand what is/isn't being remembered
+  - Updated documentation: `docs/verbose-mode.md`
+
+### Changed
+- Backfilled all existing insights with `future_usefulness` scores based on category
+- Enhanced agent prompt with structured memory evaluation process
+- Improved memory-capture.sh hook to be more directive
+- Renamed all documentation files to lowercase (kebab-case)
+
+### Testing
+- Added `test-probability-threshold.sh` - validates threshold system
+- Added `test-enhanced-stop-hook.sh` - validates hook improvements  
+- Added `test-verbose-memory-check.sh` - validates verbose mode enhancements
+
 ## [1.3.0] - 2026-02-26
 
 ### Added
