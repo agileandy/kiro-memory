@@ -118,7 +118,7 @@ cp -r /path/to/memory-system/.kiro /your/project/
 
 ---
 
-### Step 3: Initialize Memory
+### Step 3: Initialize Your Memory
 
 ```bash
 cd /your/project
@@ -128,9 +128,56 @@ cd /your/project
 **Expected output:**
 ```
 Memory initialized at .kiro/memory/insights.json
+
+Tip: Sample insights available at .kiro/memory/sample-insights.json
+     Use '.kiro/memory.sh import-samples' to copy them to your memory file
 ```
 
-If you see "Memory file already exists", that's normal - it means the `.kiro` directory came with a pre-initialized memory file.
+**Important:** The repo includes `sample-insights.json` with example insights. These are for learning the system. Your personal `insights.json` file is gitignored and won't be overwritten when you pull updates.
+
+---
+
+### Step 4: Configure Your Memory File (Optional)
+
+By default, your memory is stored at `.kiro/memory/insights.json`. To use a different name:
+
+1. Edit `.kiro/settings/config.json`:
+```json
+{
+  "default_agent": ".kiro/agents/Default.json",
+  "memory_file": ".kiro/memory/my-project-memory.json"
+}
+```
+
+2. Initialize with your custom name:
+```bash
+./.kiro/memory.sh init
+```
+
+**Why customize?**
+- Use project-specific names (e.g., `frontend-insights.json`, `backend-insights.json`)
+- Keep multiple memory files for different contexts
+- Avoid any potential conflicts with repo updates
+
+---
+
+### Step 5: Import Sample Insights (Optional)
+
+To learn the system, import the provided samples:
+
+```bash
+./.kiro/memory.sh import-samples
+```
+
+This copies all sample insights to your memory file. You can review them with:
+```bash
+./.kiro/memory.sh list
+```
+
+And remove any you don't need:
+```bash
+./.kiro/memory.sh remove <insight-id>
+```
 
 ---
 
@@ -568,6 +615,20 @@ echo ".kiro/memory/insights.json" >> .gitignore
 ### Related file wasn't modified
 
 **Expected behavior:** Related files are **references only**. The memory system does not modify the original files. See "Understanding 'Related Files'" above.
+
+---
+
+## Documentation
+
+Additional documentation is available in the `docs/` folder:
+
+- **[CHANGELOG.md](docs/CHANGELOG.md)** - Version history and release notes
+- **[SETUP-GUIDE.md](docs/SETUP-GUIDE.md)** - Protecting your insights from repo updates
+- **[VERSION-MANAGEMENT.md](docs/VERSION-MANAGEMENT.md)** - Version management guide
+- **[VERBOSE-MODE.md](docs/VERBOSE-MODE.md)** - Verbose mode quick reference
+- **[why-memory.md](docs/why-memory.md)** - Why memory system vs context stuffing
+- **[agents.md](docs/agents.md)** - Agent instructions for memory system
+- **[PROTECTION-IMPLEMENTATION.md](docs/PROTECTION-IMPLEMENTATION.md)** - Technical implementation details
 
 ---
 

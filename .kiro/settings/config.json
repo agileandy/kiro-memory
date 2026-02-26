@@ -1,0 +1,4 @@
+{
+  "default_agent": ".kiro/agents/Default.json",
+  "memory_file": ".kiro/memory/insights.json"
+}
