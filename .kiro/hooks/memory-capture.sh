@@ -1,94 +1,58 @@
 #!/bin/bash
 
-# Memory capture hook - runs at end of each agent turn
-# Prompts agent to reflect and capture insights with better keyword guidance
+# Enhanced memory capture hook - runs at end of each agent turn
+# Analyzes conversation and suggests specific memories to create
 
 MEMORY_FILE=".kiro/memory/insights.json"
-MEMORY_PROMPT_FILE=".kiro/hooks/.memory-prompt"
+THRESHOLD="${KIRO_MEMORY_THRESHOLD:-20}"
 
 # Check if memory system exists
 if [[ ! -f "$MEMORY_FILE" ]]; then
     exit 0
 fi
 
-# Create a prompt for the agent to see on next interaction
-cat > "$MEMORY_PROMPT_FILE" << 'EOF'
+# Read hook event from STDIN
+HOOK_EVENT=$(cat)
 
-📝 MEMORY REFLECTION:
-Did you learn anything new in this conversation that should be remembered?
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️  CRITICAL: KEYWORD/TAG QUALITY DETERMINES RETRIEVABILITY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-This system uses GREP-BASED search (not semantic/AI search).
-Memories are ONLY found if the exact search words appear in:
-  • summary
-  • content
-  • tags
-
-Example failure case:
-  Memory: "Use AWS profile X for prod"
-  Query: "search logs in aws"  → NOT FOUND (no "logs" word)
+# Output memory reflection prompt to STDERR (shown to agent)
+cat >&2 << EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WHEN ADDING MEMORIES, INCLUDE ALL LIKELY SEARCH TERMS
+📝 MEMORY CAPTURE CHECKPOINT (Threshold: ${THRESHOLD}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-❌ BAD: "Use AWS profile X for prod"
-✅ GOOD: "AWS CLI commands require explicit profile specification. ALL AWS commands (logs, cloudwatch, s3, ec2, lambda) must use --profile flag. Profile X for prod, profile Y for non-prod."
+Run the probability checklist NOW:
 
-Tags should include:
-  • Primary topic: aws, cloud, database, api
-  • Related tools: cloudwatch, s3, postgres, redis
-  • Action verbs: deploy, query, search, logs
-  • Antonyms/variants: prod, production, non-prod, dev, staging
+1. ✓ User stated preference/convention? (80-100%)
+2. ✓ User corrected project behavior? (70-90%)
+3. ✓ Discovered non-obvious pattern? (50-70%)
+4. ✓ Troubleshot undocumented issue? (50-70%)
+5. ✓ Learned project context? (30-50%)
+6. ✗ One-time task/general knowledge? (0-10%)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BEFORE ADDING: TEST RETRIEVABILITY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+For EACH item that applies:
+- Estimate probability (0-100)
+- If >= ${THRESHOLD}%, CREATE the memory NOW
+- Include future_usefulness score
 
-Simulate how this memory would be found. Ask yourself:
-  "What would I type to search for this?"
-
-Then test it:
-  rg -A 3 "your-search-term" .kiro/memory/insights.json
-
-If it doesn't appear, add those search terms to the memory.
+REQUIRED: State one of:
+  "✅ Created N memories (IDs: ...)"
+  "⏭️  No memories above ${THRESHOLD}% threshold"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WHEN TO ADD MEMORY
+⚠️  KEYWORD QUALITY REMINDER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Add to memory if you:
-- Made an architecture decision
-- Established a new convention
-- Discovered a pattern specific to this project
-- Chose one approach over another (and why)
-- Encountered a gotcha or pitfall
-- Learned a user preference or workflow
+Grep-based search requires EXACT word matches in summary/content/tags.
+
+❌ BAD: "Use AWS profile X"
+✅ GOOD: "AWS CLI commands (logs, cloudwatch, s3, ec2, lambda) require 
+         --profile flag. Profile X for prod/production, Y for dev/staging."
+
+Test retrievability: rg -A 3 "search-term" .kiro/memory/insights.json
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HOW TO ADD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Check for duplicates: rg "similar-keyword" .kiro/memory/insights.json
-2. Add insight to appropriate category in .kiro/memory/insights.json
-3. Update metadata (total_insights, last_updated)
-
-Categories:
-  • conventions - Code style, naming patterns, standards
-  • architecture - System design, component relationships
-  • patterns     - Idioms, common approaches in this codebase
-  • decisions    - Why X was chosen over Y
-  • gotchas      - Common pitfalls, troubleshooting tips
 
 EOF
-
-# Output the prompt to stderr so agent sees it
-cat "$MEMORY_PROMPT_FILE" >&2
-
-# Clean up prompt file
-rm "$MEMORY_PROMPT_FILE"
 
 exit 0
