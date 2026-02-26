@@ -15,3 +15,4 @@
 # Version management (local only)
 .kiro/VERSION
 .kiro/.version-local
+VERSION-MANAGEMENT.md
