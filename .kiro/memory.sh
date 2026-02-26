@@ -2,7 +2,16 @@
 # kiro memory - CLI commands for project memory
 
 MEMORY_DIR=".kiro/memory"
-MEMORY_FILE="$MEMORY_DIR/insights.json"
+CONFIG_FILE=".kiro/settings/config.json"
+
+# Read memory file location from config, default to insights.json
+if [ -f "$CONFIG_FILE" ]; then
+    MEMORY_FILE=$(jq -r '.memory_file // ".kiro/memory/insights.json"' "$CONFIG_FILE" 2>/dev/null)
+else
+    MEMORY_FILE=".kiro/memory/insights.json"
+fi
+
+VERBOSE="${KIRO_MEMORY_VERBOSE:-true}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,7 +23,7 @@ NC='\033[0m' # No Color
 # Ensure memory directory exists
 init_memory() {
     if [ ! -f "$MEMORY_FILE" ]; then
-        mkdir -p "$MEMORY_DIR"
+        mkdir -p "$(dirname "$MEMORY_FILE")"
         cat > "$MEMORY_FILE" << 'EOF'
 {
   "metadata": {
@@ -32,6 +41,9 @@ init_memory() {
 }
 EOF
         echo -e "${GREEN}Memory initialized at $MEMORY_FILE${NC}"
+        echo ""
+        echo -e "${BLUE}Tip:${NC} Sample insights available at .kiro/memory/sample-insights.json"
+        echo -e "     Use '.kiro/memory.sh import-samples' to copy them to your memory file"
     else
         echo -e "${YELLOW}Memory file already exists at $MEMORY_FILE${NC}"
         echo -e "  Use '${GREEN}.kiro/memory.sh status${NC}' to see current memory"
@@ -84,17 +96,17 @@ cmd_show() {
     done
 }
 
-# Search memory by keyword or tag
+# Search memory by keyword or tag (searches summary, content, and tags)
 cmd_search() {
     local query="$1"
 
     if [ -z "$query" ]; then
-        echo -e "${RED}Usage: kiro memory search <keyword or tag>${NC}"
+        echo -e "${RED}Usage: .kiro/memory.sh search <keyword>${NC}"
         return 1
     fi
 
     if [ ! -f "$MEMORY_FILE" ]; then
-        echo -e "${RED}Memory not found. Run 'kiro memory init' first.${NC}"
+        echo -e "${RED}Memory not found. Run '.kiro/memory.sh init' first.${NC}"
         return 1
     fi
 
@@ -103,16 +115,16 @@ cmd_search() {
 
     local found=0
 
+    # Search through all insights using jq
     for category in conventions architecture patterns decisions gotchas; do
-        local results=$(jq -r --arg q "$query" \
-            ".insights.$category[] | select(.summary | ascii_downcase | contains(\$q | ascii_downcase)) | \
-            \"\(.summary) | \(.category)\"" \
-            "$MEMORY_FILE" 2>/dev/null)
+        local results=$(jq -r --arg q "$query" ".insights.$category[] | select(
+            (.summary | ascii_downcase | contains(\$q | ascii_downcase)) or
+            (.content | ascii_downcase | contains(\$q | ascii_downcase)) or
+            (.tags | map(ascii_downcase) | any(contains(\$q | ascii_downcase)))
+        ) | \"ID: \(.id)\nSummary: \(.summary)\nContent: \(.content)\nTags: \(.tags | join(\", \"))\n\"" "$MEMORY_FILE" 2>/dev/null)
 
         if [ -n "$results" ]; then
-            echo -e "${GREEN}$category:${NC}"
             echo "$results"
-            echo ""
             found=1
         fi
     done
@@ -159,6 +171,22 @@ cmd_add() {
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local id=$(echo "$summary" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')
 
+    # Check for duplicate ID and auto-increment if needed
+    local original_id="$id"
+    local counter=2
+    while true; do
+        local existing=$(jq -r --arg id "$id" '.insights[][] | select(.id == $id) | .id' "$MEMORY_FILE" 2>/dev/null)
+        if [ -z "$existing" ]; then
+            break
+        fi
+        id="${original_id}-${counter}"
+        ((counter++))
+    done
+
+    if [ "$id" != "$original_id" ]; then
+        [ "$VERBOSE" = "true" ] && echo -e "${YELLOW}Note: ID adjusted to '$id' to avoid duplicate${NC}"
+    fi
+
     # Create temp file for JSON construction
     local tmpfile=$(mktemp)
 
@@ -186,11 +214,23 @@ cmd_add() {
 
     # Add to memory file
     jq --arg category "$category" --argjson insight "$new_insight" \
-        '.insights[$category] += [$insight] | .metadata.total_insights += 1 | .metadata.last_updated = now | tostring |= .[0:19] + "Z"' \
+        '.insights[$category] += [$insight] | 
+         .metadata.total_insights += 1 | 
+         .metadata.last_updated = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
         "$MEMORY_FILE" > "$tmpfile" && mv "$tmpfile" "$MEMORY_FILE"
 
-    echo ""
-    echo -e "${GREEN}Insight added successfully!${NC}"
+    if [ "$VERBOSE" = "true" ]; then
+        echo ""
+        echo -e "${GREEN}✓ Insight added successfully!${NC}"
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "  ID: ${YELLOW}$id${NC}"
+        echo -e "  Category: ${YELLOW}$category${NC}"
+        echo -e "  Summary: $summary"
+        if [ ${#tags_json} -gt 2 ]; then
+            echo -e "  Tags: $(echo "$tags_json" | jq -r 'join(", ")')"
+        fi
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    fi
 }
 
 # Clear all memory
@@ -323,32 +363,266 @@ cmd_test() {
     fi
 }
 
+# List insights (compact view)
+cmd_list() {
+    local category="$1"
+
+    if [ ! -f "$MEMORY_FILE" ]; then
+        echo -e "${RED}Memory not found. Run '.kiro/memory.sh init' first.${NC}"
+        return 1
+    fi
+
+    if [ -n "$category" ]; then
+        # List specific category
+        local count=$(jq ".insights.$category | length" "$MEMORY_FILE" 2>/dev/null || echo "0")
+        if [ "$count" -eq 0 ]; then
+            echo -e "${YELLOW}No insights in category '$category'${NC}"
+            return 0
+        fi
+        echo -e "${GREEN}$category ($count):${NC}"
+        jq -r ".insights.$category[] | \"  \(.id) - \(.summary)\"" "$MEMORY_FILE" 2>/dev/null
+    else
+        # List all categories
+        echo -e "${BLUE}=== All Insights ===${NC}"
+        echo ""
+        for cat in conventions architecture patterns decisions gotchas; do
+            local count=$(jq ".insights.$cat | length" "$MEMORY_FILE" 2>/dev/null || echo "0")
+            if [ "$count" -gt 0 ]; then
+                echo -e "${GREEN}$cat ($count):${NC}"
+                jq -r ".insights.$cat[] | \"  \(.id) - \(.summary)\"" "$MEMORY_FILE" 2>/dev/null
+                echo ""
+            fi
+        done
+    fi
+}
+
+# Remove an insight
+cmd_remove() {
+    local memory_id="$1"
+
+    if [ -z "$memory_id" ]; then
+        echo -e "${RED}Usage: .kiro/memory.sh remove <memory-id>${NC}"
+        return 1
+    fi
+
+    if [ ! -f "$MEMORY_FILE" ]; then
+        echo -e "${RED}Memory not found. Run '.kiro/memory.sh init' first.${NC}"
+        return 1
+    fi
+
+    # Check if insight exists
+    local existing=$(jq -r --arg id "$memory_id" '.insights[][] | select(.id == $id) | .id' "$MEMORY_FILE" 2>/dev/null)
+    if [ -z "$existing" ]; then
+        echo -e "${RED}Error: No insight found with ID '$memory_id'${NC}"
+        return 1
+    fi
+
+    # Show what will be removed
+    echo -e "${YELLOW}Removing insight:${NC}"
+    jq -r --arg id "$memory_id" '.insights[][] | select(.id == $id) | "  Summary: \(.summary)\n  Content: \(.content)"' "$MEMORY_FILE" 2>/dev/null
+    echo ""
+
+    read -p "Are you sure? [y/N]: " confirm
+    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        return 0
+    fi
+
+    # Remove the insight
+    local tmpfile=$(mktemp)
+    jq --arg id "$memory_id" '
+        .insights.conventions |= map(select(.id != $id)) |
+        .insights.architecture |= map(select(.id != $id)) |
+        .insights.patterns |= map(select(.id != $id)) |
+        .insights.decisions |= map(select(.id != $id)) |
+        .insights.gotchas |= map(select(.id != $id)) |
+        .metadata.total_insights = ([.insights[][]] | length) |
+        .metadata.last_updated = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+    ' "$MEMORY_FILE" > "$tmpfile" && mv "$tmpfile" "$MEMORY_FILE"
+
+    echo -e "${GREEN}Insight removed successfully.${NC}"
+}
+
+# Edit an insight
+cmd_edit() {
+    local memory_id="$1"
+
+    if [ -z "$memory_id" ]; then
+        echo -e "${RED}Usage: .kiro/memory.sh edit <memory-id>${NC}"
+        return 1
+    fi
+
+    if [ ! -f "$MEMORY_FILE" ]; then
+        echo -e "${RED}Memory not found. Run '.kiro/memory.sh init' first.${NC}"
+        return 1
+    fi
+
+    # Check if insight exists
+    local insight=$(jq -r --arg id "$memory_id" '.insights[][] | select(.id == $id)' "$MEMORY_FILE" 2>/dev/null)
+    if [ -z "$insight" ]; then
+        echo -e "${RED}Error: No insight found with ID '$memory_id'${NC}"
+        return 1
+    fi
+
+    # Extract current values
+    local current_summary=$(echo "$insight" | jq -r '.summary')
+    local current_content=$(echo "$insight" | jq -r '.content')
+    local current_files=$(echo "$insight" | jq -r '.files | join(", ")')
+    local current_tags=$(echo "$insight" | jq -r '.tags | join(", ")')
+
+    echo -e "${BLUE}=== Edit Insight: $memory_id ===${NC}"
+    echo ""
+    echo -e "Current summary: ${YELLOW}$current_summary${NC}"
+    read -p "New summary (or press Enter to keep): " new_summary
+    [ -z "$new_summary" ] && new_summary="$current_summary"
+
+    echo -e "Current content: ${YELLOW}$current_content${NC}"
+    read -p "New content (or press Enter to keep): " new_content
+    [ -z "$new_content" ] && new_content="$current_content"
+
+    echo -e "Current files: ${YELLOW}$current_files${NC}"
+    read -p "New files (comma-separated, or press Enter to keep): " new_files
+    [ -z "$new_files" ] && new_files="$current_files"
+
+    echo -e "Current tags: ${YELLOW}$current_tags${NC}"
+    read -p "New tags (comma-separated, or press Enter to keep): " new_tags
+    [ -z "$new_tags" ] && new_tags="$current_tags"
+
+    # Build arrays
+    local files_json="[]"
+    local tags_json="[]"
+
+    if [ -n "$new_files" ]; then
+        files_json=$(echo "$new_files" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+    fi
+
+    if [ -n "$new_tags" ]; then
+        tags_json=$(echo "$new_tags" | jq -R 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+    fi
+
+    # Update the insight
+    local tmpfile=$(mktemp)
+    jq --arg id "$memory_id" \
+       --arg summary "$new_summary" \
+       --arg content "$new_content" \
+       --argjson files "$files_json" \
+       --argjson tags "$tags_json" '
+        (.insights[][] | select(.id == $id)) |= {
+            id: .id,
+            summary: $summary,
+            content: $content,
+            files: $files,
+            tags: $tags,
+            created_at: .created_at
+        } |
+        .metadata.last_updated = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+    ' "$MEMORY_FILE" > "$tmpfile" && mv "$tmpfile" "$MEMORY_FILE"
+
+    echo ""
+    echo -e "${GREEN}Insight updated successfully.${NC}"
+}
+
 # Show help
 cmd_help() {
     echo "kiro memory - Project memory management"
     echo ""
-    echo "Usage: kiro memory <command>"
+    echo "Usage: .kiro/memory.sh <command>"
     echo ""
     echo "Commands:"
-    echo "  init      Initialize memory for this project"
-    echo "  status    Show memory statistics"
-    echo "  show      Display all insights"
-    echo "  search    Search by keyword or tag"
-    echo "  add       Manually add a new insight"
-    echo "  test      Test if a memory is retrievable with search terms"
-    echo "  clear     Clear all memory (requires confirmation)"
-    echo "  help      Show this help message"
+    echo "  init              Initialize memory for this project"
+    echo "  status            Show memory statistics"
+    echo "  list [category]   List all insights (compact view)"
+    echo "  show              Display all insights (detailed view)"
+    echo "  search <keyword>  Search by keyword in summary, content, and tags"
+    echo "  add               Manually add a new insight"
+    echo "  edit <id>         Edit an existing insight"
+    echo "  remove <id>       Remove an insight"
+    echo "  import-samples    Import insights from sample-insights.json"
+    echo "  test <id> [...]   Test if a memory is retrievable with search terms"
+    echo "  clear             Clear all memory (requires confirmation)"
+    echo "  version           Show version information"
+    echo "  help              Show this help message"
+    echo ""
+    echo "Current memory file: $MEMORY_FILE"
+}
+
+# Show version information
+cmd_version() {
+    local version_file=".kiro/VERSION"
+    local local_version_file=".kiro/.version-local"
+    
+    if [ -f "$version_file" ]; then
+        local version=$(cat "$version_file")
+        echo -e "${BLUE}Kiro Memory System${NC}"
+        echo -e "Version: ${GREEN}$version${NC}"
+        echo ""
+        
+        if [ -f "$local_version_file" ]; then
+            echo -e "${BLUE}Local Installation:${NC}"
+            jq -r '"  Installed: \(.installed_date)\n  Last Updated: \(.last_updated)\n  Custom Modifications: \(.custom_modifications)"' "$local_version_file"
+        fi
+        
+        echo ""
+        echo "See docs/CHANGELOG.md for version history and changes."
+    else
+        echo -e "${YELLOW}Version file not found.${NC}"
+        echo "This may be a development version."
+    fi
+}
+
+# Import sample insights
+cmd_import_samples() {
+    local sample_file=".kiro/memory/sample-insights.json"
+    
+    if [ ! -f "$sample_file" ]; then
+        echo -e "${RED}Sample insights file not found at $sample_file${NC}"
+        return 1
+    fi
+    
+    if [ ! -f "$MEMORY_FILE" ]; then
+        echo -e "${YELLOW}Memory file doesn't exist. Run '.kiro/memory.sh init' first.${NC}"
+        return 1
+    fi
+    
+    echo -e "${BLUE}Importing sample insights...${NC}"
+    echo ""
+    
+    # Merge sample insights into user's memory file
+    local tmpfile=$(mktemp)
+    jq -s '
+        .[0] as $user |
+        .[1] as $samples |
+        $user |
+        .insights.conventions += $samples.insights.conventions |
+        .insights.architecture += $samples.insights.architecture |
+        .insights.patterns += $samples.insights.patterns |
+        .insights.decisions += $samples.insights.decisions |
+        .insights.gotchas += $samples.insights.gotchas |
+        .metadata.total_insights = ([.insights[][]] | length) |
+        .metadata.last_updated = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+    ' "$MEMORY_FILE" "$sample_file" > "$tmpfile" && mv "$tmpfile" "$MEMORY_FILE"
+    
+    local count=$(jq '[.insights[][]] | length' "$sample_file")
+    echo -e "${GREEN}✓ Imported $count sample insights${NC}"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} This may create duplicates if samples were already imported."
+    echo -e "      Use '.kiro/memory.sh list' to review and '.kiro/memory.sh remove <id>' to clean up."
 }
 
 # Main command dispatcher
 case "${1:-help}" in
     init)   init_memory ;;
     status) cmd_status ;;
+    list)   cmd_list "$2" ;;
     show)   cmd_show ;;
     search) cmd_search "$2" ;;
     add)    cmd_add ;;
+    edit)   cmd_edit "$2" ;;
+    remove) cmd_remove "$2" ;;
+    import-samples) cmd_import_samples ;;
     test)   shift; cmd_test "$@" ;;
     clear)  cmd_clear ;;
+    version) cmd_version ;;
     help|--help|-h) cmd_help ;;
     *)      echo -e "${RED}Unknown command: $1${NC}"; echo ""; cmd_help ;;
 esac

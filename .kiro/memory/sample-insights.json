@@ -1,8 +1,8 @@
 {
   "metadata": {
     "version": "1.0",
-    "last_updated": "2026-02-13T15:23:30Z",
-    "total_insights": 35
+    "last_updated": "2026-02-26T01:19:24Z",
+    "total_insights": 39
   },
   "insights": {
     "conventions": [
@@ -10,11 +10,11 @@
         "id": "snake-case-naming",
         "summary": "Python code uses snake_case naming",
         "content": "All variables, functions, and modules use snake_case. Classes use PascalCase. Constants use UPPER_CASE.",
+        "files": [],
         "tags": [
           "python",
           "naming"
         ],
-        "files": [],
         "created_at": "2026-02-06T00:00:00Z"
       },
       {
@@ -100,6 +100,34 @@
         ],
         "files": [],
         "created_at": "2026-02-13T15:23:30Z"
+      },
+      {
+        "id": "aws-profile-convention",
+        "summary": "AWS CLI requires profile specification for environments",
+        "content": "ALL AWS CLI commands (logs, cloudwatch, s3, ec2, lambda, rds, dynamodb, ecs, eks) must use --profile flag. Use profile X for non-prod/dev/staging/test environments. Use profile Y for production/prod environment. This applies to queries, deployments, resource access, and any AWS service operations.",
+        "tags": [
+          "aws",
+          "cli",
+          "profile",
+          "cloudwatch",
+          "logs",
+          "s3",
+          "ec2",
+          "lambda",
+          "rds",
+          "dynamodb",
+          "ecs",
+          "eks",
+          "prod",
+          "production",
+          "dev",
+          "staging",
+          "non-prod",
+          "test",
+          "convention"
+        ],
+        "files": [],
+        "created_at": "2026-02-24T12:18:01Z"
       }
     ],
     "architecture": [

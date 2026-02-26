@@ -9,5 +9,9 @@
 .project
 .vscode/
 
-# Optional: Keep local memory separate
-# .kiro/memory/insights.json
+# User's memory file (not tracked - prevents overwrite on pull)
+.kiro/memory/insights.json
+
+# Version management (local only)
+.kiro/VERSION
+.kiro/.version-local
